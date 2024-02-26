@@ -1,5 +1,5 @@
 /*
-Welcome With Helwan O.S info demo version by Saeed Badrelden (smacoding youtube channel)
+Welcome With Helwan O.S info demo version
 https://github.com/helwan-linux/os_info
 
 Windows:
@@ -15,6 +15,7 @@ The code was compiled using clang(it has some errors)..
 
 */
 
+//#include <sys/vfs.h> // أو <sys/vfs.h> حسب نظامك
 /*
  يقوم بتضمين ملف تعريف الإدخال/الإخراج القياسي،
  مما يوفر وظائف مثل printf و scanf لطباعة وقراءة البيانات.
@@ -24,7 +25,7 @@ The code was compiled using clang(it has some errors)..
  قوم بتضمين ملف تعريف مكتبة القياسي،
  مما يوفر وظائف عامة مختلفة مثل malloc و free لإدارة الذاكرة. 
 */
-#include <stdlib.h>
+//#include <stdlib.h>
 /*
  قوم بتضمين ملف تعريف السلسلة
 مما يقدم وظائف لمعالجة السلاسل مثل strcpy و strcmp.
@@ -35,7 +36,7 @@ The code was compiled using clang(it has some errors)..
 */
 #include <inttypes.h>
 
-#ifdef _WIN32 // this for windows 32 && 64
+#ifdef _WIN32 // this for Windows 32 && 64
 /*
  مما يوفر الوصول إلى وظائف خاصة بنظام Windows.
 */
@@ -54,7 +55,8 @@ The code was compiled using clang(it has some errors)..
 /*
 لاستخراج معلومات عن الهارد ديسك 
 */
-#include <sys/stat.h>
+//#include <sys/stat.h>
+#include <sys/statvfs.h>
 
 #elif __APPLE__
 /*
@@ -180,7 +182,7 @@ void get_disk_info(uint64_t *total_space, uint64_t *used_space, uint64_t *free_s
     *total_space = stat.f_blocks * stat.f_bsize;
 
     // استخراج المساحة المستخدمة
-    *used_space = stat.f_blocks_used * stat.f_bsize;
+    *used_space = stat.f_blocks * stat.f_bsize;
 
     // استخراج المساحة الفارغة
     *free_space = stat.f_bavail * stat.f_bsize;
@@ -230,7 +232,7 @@ void get_system_info(char *os_name, char *os_version, char *username) {
   size = sizeof(os_name);
   sysctlbyname("kern.ostype", os_name, &size, NULL, 0);
   size = sizeof(os_version);
-  sysctlbyname("kern.osrelease", os_version, &size, NULL, 0);
+  //sysctlbyname("kern.osrelease", os_version, &size, NULL, 0);
   #endif
 
   // تعريف متغير لحفظ طول اسم المستخدم
@@ -412,8 +414,8 @@ int main() {
 	printf("Total Space: %" PRIu64 " GB\n", total_space);
 	printf("Used Space: %" PRIu64 " GB\n", used_space);
 	printf("Free Space: %" PRIu64 " GB\n", free_space);
-    	printf("C.P.U Name: %s\n", cpu_name);
-    	printf("CORES: %d\n", num_cores);
-    	printf("Ram: %d G.B\n", total_ram);
+    printf("C.P.U Name: %s\n", cpu_name);
+    printf("CORES: %d\n", num_cores);
+    printf("Ram: %d G.B\n", total_ram);
   return 0;
 }
