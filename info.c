@@ -1,6 +1,18 @@
 /*
-Welcome With Helwan O.S info demo version
+Welcome With Helwan O.S info demo version by Saeed Badrelden (smacoding youtube channel)
 https://github.com/helwan-linux/os_info
+
+Windows:
+Tested on Windows 10
+Code compiled using mingw
+
+Linux:
+Tested on Ubuntu 22.04 LTS.
+The code was compiled using gcc.
+
+Mac:
+The code was compiled using clang(it has some errors)..
+
 */
 
 /*
@@ -400,32 +412,8 @@ int main() {
 	printf("Total Space: %" PRIu64 " GB\n", total_space);
 	printf("Used Space: %" PRIu64 " GB\n", used_space);
 	printf("Free Space: %" PRIu64 " GB\n", free_space);
- printf("C.P.U Name: %s\n", cpu_name);
- printf("CORES: %d\n", num_cores);
- printf("Ram: %d G.B\n", total_ram);
+    	printf("C.P.U Name: %s\n", cpu_name);
+    	printf("CORES: %d\n", num_cores);
+    	printf("Ram: %d G.B\n", total_ram);
   return 0;
 }
-
-/*
- تحديث: تجربة الكود على أنظمة لينكس و ماك
-لينكس:
-
-تم اختبار الكود على نظام Ubuntu 22.04 LTS.
-تم إجراء التعديلات التالية:
-تم استبدال GetSystemInfo بـ sysctlbyname للحصول على معلومات النظام.
-تم استبدال GlobalMemoryStatusEx بـ /proc/meminfo للحصول على معلومات الذاكرة.
-تم تعديل مسارات الملفات في وظائف get_cpu_info و get_memory_info.
-تم تشغيل الكود بنجاح دون أي أخطاء.
-ماك:
-
-تم اختبار الكود على نظام macOS Monterey 12.4.
-تم إجراء التعديلات التالية:
-تم استبدال GetSystemInfo بـ sysctlbyname و Gestalt للحصول على معلومات النظام.
-تم استبدال GlobalMemoryStatusEx بـ host_statistics للحصول على معلومات الذاكرة.
-تم تعديل مسارات الملفات في وظائف get_cpu_info و get_memory_info.
-تم تشغيل الكود بنجاح دون أي أخطاء.
-ملاحظة:
-
-قد تختلف بعض التفاصيل في كيفية تنفيذ الكود على أنظمة لينكس و ماك مختلفة.
-تأكد من مراجعة التعليمات الموجودة في الكود قبل تشغيله على أي نظام.
-*/
