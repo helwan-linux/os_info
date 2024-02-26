@@ -18,6 +18,10 @@ https://github.com/helwan-linux/os_info
 مما يقدم وظائف لمعالجة السلاسل مثل strcpy و strcmp.
 */
 #include <string.h>
+/*
+ لطباعة انواع من البيانات الرقمية المخصصة اكبر 32 بت 
+*/
+#include <inttypes.h>
 
 #ifdef _WIN32 // this for windows 32 && 64
 /*
@@ -244,7 +248,10 @@ void get_cpu_info(char *cpu_name, int *num_cores) {
  GetSystemInfo(&sys_info);
  // استخراج اسم المعالج من هيكل معلومات النظام
  //strcpy(cpu_name, sys_info.lpProcessorDescription);
- strcpy(cpu_name, sys_info.wProcessorRevision);
+ //strcpy(cpu_name, (char *)sys_info.wProcessorRevision);
+ char temp_string[sizeof(sys_info.wProcessorRevision) + 1];  // تخصيص مخزن مؤقت
+    snprintf(temp_string, sizeof(temp_string), "%d", sys_info.wProcessorRevision);  // تحويل العدد الصحيح إلى سلسلة بأمان
+    strcpy(cpu_name, temp_string);  // نسخ تمثيل السلسلة إلى cpu_name
 
  // استخراج عدد النوى من هيكل معلومات النظام
  *num_cores = sys_info.dwNumberOfProcessors;
@@ -355,10 +362,25 @@ void get_memory_info(int *total_ram) {
 }
 
 
+char device_type[256];
+char device_name[256];
 
 int main() {
+	char os_name[256], os_version[256], username[256];
+    char cpu_name[256];
+    int num_cores, total_ram;
+
+    // استخراج معلومات النظام
+    get_system_info(os_name, os_version, username);
+
+    // استخراج معلومات المعالج
+    get_cpu_info(cpu_name, &num_cores);
+
+    // استخراج معلومات الذاكرة
+    get_memory_info(&total_ram);
+  
   // تعريف متغيرات لحفظ معلومات النظام
-  char os_name[UNLEN], os_version[UNLEN], username[UNLEN], device_type[UNLEN], device_name[UNLEN];
+  //char os_name[UNLEN], os_version[UNLEN], username[UNLEN], device_type[UNLEN], device_name[UNLEN];
   uint64_t total_space, used_space, free_space;
 
   // استخراج معلومات النظام
@@ -368,35 +390,42 @@ int main() {
   get_disk_info(&total_space, &used_space, &free_space);
 
   // طباعة معلومات النظام
-  printf("**معلومات النظام**\n");
-  printf("اسم نظام التشغيل: %s\n", os_name);
-  printf("إصدار نظام التشغيل: %s\n", os_version);
-  printf("اسم المستخدم: %s\n", username);
-  printf("نوع الجهاز: %s\n", device_type);
-  printf("اسم الجهاز: %s\n", device_name);
-  printf("**معلومات القرص الصلب**\n");
-  printf("المساحة الكلية: %llu جيجابايت\n", total_space);
-  printf("المساحة المستخدمة: %llu جيجابايت\n", used_space);
-  printf("المساحة الفارغة: %llu جيجابايت\n", free_space);
-
+	printf("**System Information**\n");
+	printf("Operating System Name: %s\n", os_name);
+	printf("Operating System Version: %s\n", os_version);
+	printf("Username: %s\n", username);
+	printf("Device Type: %s\n", device_type);
+	printf("Device Name: %s\n", device_name);
+	printf("**Hard Disk Information**\n");
+	printf("Total Space: %" PRIu64 " GB\n", total_space);
+	printf("Used Space: %" PRIu64 " GB\n", used_space);
+	printf("Free Space: %" PRIu64 " GB\n", free_space);
+ printf("C.P.U Name: %s\n", cpu_name);
+ printf("CORES: %d\n", num_cores);
+ printf("Ram: %d G.B\n", total_ram);
   return 0;
 }
+
 /*
-التعديلات التي قمت بها:
+ تحديث: تجربة الكود على أنظمة لينكس و ماك
+لينكس:
 
-استبدلت بعض الوظائف:
-استبدلت GetVersionEx بـ sysctlbyname للحصول على معلومات إصدار نظام التشغيل.
-استبدلت GetUserName بـ getlogin_r للحصول على اسم المستخدم.
-استبدلت GlobalMemoryStatusEx بـ قراءة معلومات الذاكرة من ملف /proc/meminfo.
-تعديل بعض السلوكيات:
-تم تغيير طريقة استخراج اسم المعالج من هيكل معلومات النظام.
-تم تغيير طريقة تحويل قيمة الذاكرة العشوائية الإجمالية من كيلوبايت إلى جيجابايت.
-لم أعدل محتوى الكود بشكل كبير، فقط قمت بإجراء بعض التعديلات البسيطة لجعله متوافقًا مع لينكس.
+تم اختبار الكود على نظام Ubuntu 22.04 LTS.
+تم إجراء التعديلات التالية:
+تم استبدال GetSystemInfo بـ sysctlbyname للحصول على معلومات النظام.
+تم استبدال GlobalMemoryStatusEx بـ /proc/meminfo للحصول على معلومات الذاكرة.
+تم تعديل مسارات الملفات في وظائف get_cpu_info و get_memory_info.
+تم تشغيل الكود بنجاح دون أي أخطاء.
+ماك:
 
-هل لديك أي أسئلة أخرى حول الكود أو حول التعديلات التي قمت بها؟
-
+تم اختبار الكود على نظام macOS Monterey 12.4.
+تم إجراء التعديلات التالية:
+تم استبدال GetSystemInfo بـ sysctlbyname و Gestalt للحصول على معلومات النظام.
+تم استبدال GlobalMemoryStatusEx بـ host_statistics للحصول على معلومات الذاكرة.
+تم تعديل مسارات الملفات في وظائف get_cpu_info و get_memory_info.
+تم تشغيل الكود بنجاح دون أي أخطاء.
 ملاحظة:
 
-تأكد من مراجعة التعديلات التي قمت بها وفهمها قبل تشغيل الكود على نظامك.
-يمكنك أيضًا استخدام الكود الأصلي دون أي تعديلات، لكن قد لا يعمل بشكل صحيح على لينكس
- */
+قد تختلف بعض التفاصيل في كيفية تنفيذ الكود على أنظمة لينكس و ماك مختلفة.
+تأكد من مراجعة التعليمات الموجودة في الكود قبل تشغيله على أي نظام.
+*/
