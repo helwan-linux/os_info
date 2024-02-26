@@ -23,8 +23,8 @@ https://github.com/helwan-linux/os_info
 /*
  مما يوفر الوصول إلى وظائف خاصة بنظام Windows.
 */
-#include <windows.h>
-
+#include <Windows.h>
+#include <stdint.h>
 #elif __linux__
 /*
 لاسترداد معلومات النظام مثل اسم المضيف واسم نظام التشغيل 
@@ -35,6 +35,10 @@ https://github.com/helwan-linux/os_info
 وظائف مثل getpid (الحصول على معرف الهوية). 
 */
 #include <unistd.h>
+/*
+لاستخراج معلومات عن الهارد ديسك 
+*/
+#include <sys/stat.h>
 
 #elif __APPLE__
 /*
@@ -55,63 +59,177 @@ https://github.com/helwan-linux/os_info
 #endif
 
 int UNLEN = 256;
-// تعريف دالة للحصول على معلومات النظام
+
+//نوع الجهاز
+void get_device_type(char *device_type) {
+  #ifdef _WIN32
+  // تعريف متغير لحفظ معلومات النظام
+  SYSTEM_INFO sys_info;
+
+  // استدعاء دالة GetSystemInfo للحصول على معلومات النظام
+  GetSystemInfo(&sys_info);
+
+  // استخراج نوع الجهاز
+  DWORD dwProductType = sys_info.wProcessorArchitecture;
+
+  // تحويل نوع الجهاز إلى سلسلة نصية
+  switch (dwProductType) {
+    case VER_NT_WORKSTATION:
+      strcpy(device_type, "WORKSTATION");
+      break;
+    case VER_NT_SERVER:
+      strcpy(device_type, "SERVER");
+      break;
+    default:
+      strcpy(device_type, "UNKNOWN");
+      break;
+  }
+
+  #elif __linux__
+    // تعريف هيكل معلومات اسم نظام التشغيل
+    struct utsname uname_data;
+
+    // استدعاء دالة uname للحصول على معلومات اسم نظام التشغيل
+    uname(&uname_data);
+
+    // استخراج نوع الجهاز
+    if (strstr(uname_data.machine, "x86_64")) {
+      strcpy(device_type, "PC");
+    } else if (strstr(uname_data.machine, "arm")) {
+      strcpy(device_type, "ARM");
+    } else {
+      strcpy(device_type, "UNKNOWN");
+    }
+
+  #elif __APPLE__
+    // تعريف متغيرات لحفظ معلومات النظام
+    size_t size;
+    char *buffer;
+
+    // استخراج نوع الجهاز
+    size = sizeof(device_type);
+    sysctlbyname("hw.machine", device_type, &size, NULL, 0);
+
+  #endif
+}
+
+//استخراج اسم الجهاز
+void get_device_name(char *device_name) {
+  #ifdef _WIN32
+    // تعريف متغير لحفظ طول اسم الجهاز
+    DWORD computer_name_len = UNLEN + 1;
+
+    // استدعاء دالة GetComputerName للحصول على اسم الجهاز
+    GetComputerName(device_name, &computer_name_len);
+
+  #elif __linux__
+    // استدعاء دالة gethostname للحصول على اسم الجهاز
+    gethostname(device_name, UNLEN);
+
+  #elif __APPLE__
+    // استدعاء دالة SCDynamicStoreCopyComputerName للحصول على اسم الجهاز
+    CFStringRef computer_name = SCDynamicStoreCopyComputerName(NULL, NULL);
+    CFStringGetCString(computer_name, device_name, sizeof(device_name), kCFStringEncodingUTF8);
+    CFRelease(computer_name);
+
+  #endif
+}
+
+//معلومات القرص الصلب
+void get_disk_info(uint64_t *total_space, uint64_t *used_space, uint64_t *free_space) {
+  #ifdef _WIN32
+    // تعريف متغيرات لحفظ معلومات القرص
+    ULARGE_INTEGER totalSpace, freeSpace;
+
+    // استدعاء دالة GetDiskFreeSpaceExW للحصول على معلومات القرص
+    GetDiskFreeSpaceExW(L"C:\\", &freeSpace, &totalSpace, NULL);
+
+    // استخراج المساحة الكلية
+    *total_space = totalSpace.QuadPart;
+
+    // استخراج المساحة المستخدمة
+    *used_space = totalSpace.QuadPart - freeSpace.QuadPart;
+
+    // استخراج المساحة الفارغة
+    *free_space = freeSpace.QuadPart;
+
+  #elif __linux__
+    // تعريف هيكل معلومات القرص
+    struct statvfs stat;
+
+    // استدعاء دالة statvfs للحصول على معلومات القرص
+    statvfs("/", &stat);
+
+    // استخراج المساحة الكلية
+    *total_space = stat.f_blocks * stat.f_bsize;
+
+    // استخراج المساحة المستخدمة
+    *used_space = stat.f_blocks_used * stat.f_bsize;
+
+    // استخراج المساحة الفارغة
+    *free_space = stat.f_bavail * stat.f_bsize;
+
+  #elif __APPLE__
+    // تعريف متغيرات لحفظ معلومات القرص
+    vm_size_t page_size;
+    mach_port_t mach_port;
+    vm_statistics_data_t vm_stats;
+
+    // استخراج حجم صفحة الذاكرة
+    host_page_size(mach_host_self(), &page_size);
+
+    // استخراج معلومات الذاكرة
+    mach_port = mach_host_self();
+    if (host_statistics(mach_port, HOST_VM_INFO, (host_info_t)&vm_stats, &info_count) == KERN_SUCCESS) {
+      *total_space = vm_stats.active_memory / page_size;
+      *used_space = vm_stats.wire_memory / page_size;
+      *free_space = vm_stats.free_memory / page_size;
+    }
+
+  #endif
+}
+
+
+
 void get_system_info(char *os_name, char *os_version, char *username) {
- #ifdef _WIN32
- // تعريف هيكل معلومات إصدار نظام التشغيل
- OSVERSIONINFOEX os_info;
- //DWORD size = sizeof(os_info);
+  // تعريف هيكل معلومات إصدار نظام التشغيل
+  #ifdef _WIN32
+  OSVERSIONINFOEX os_info;
+  #elif __APPLE__
+  size_t size;
+  char *buffer;
+  #endif
 
- // استدعاء دالة GetVersionEx للحصول على معلومات إصدار نظام التشغيل
- GetVersionEx((OSVERSIONINFO *)&os_info);
+  // استدعاء دالة GetVersionEx أو sysctlbyname للحصول على معلومات إصدار نظام التشغيل
+  #ifdef _WIN32
+  GetVersionEx((OSVERSIONINFO *)&os_info);
+  strcpy(os_name, os_info.szCSDVersion);
+  sprintf(os_version, "%ld.%ld.%ld", os_info.dwMajorVersion, os_info.dwMinorVersion, os_info.dwBuildNumber);
+  #elif __linux__
+  struct utsname uname_data;
+  uname(&uname_data);
+  strcpy(os_name, uname_data.sysname);
+  strcpy(os_version, uname_data.release);
+  #elif __APPLE__
+  size = sizeof(os_name);
+  sysctlbyname("kern.ostype", os_name, &size, NULL, 0);
+  size = sizeof(os_version);
+  sysctlbyname("kern.osrelease", os_version, &size, NULL, 0);
+  #endif
 
- // استخراج اسم نظام التشغيل من هيكل معلومات إصدار نظام التشغيل
- strcpy(os_name, os_info.szCSDVersion);
+  // تعريف متغير لحفظ طول اسم المستخدم
+  #ifdef _WIN32
+  DWORD username_len = UNLEN + 1;
+  #endif
 
- // استخراج إصدار نظام التشغيل من هيكل معلومات إصدار نظام التشغيل
- sprintf(os_version, "%ld.%ld.%ld", os_info.dwMajorVersion, os_info.dwMinorVersion, os_info.dwBuildNumber);
-
- // تعريف متغير لحفظ طول اسم المستخدم
- DWORD username_len = UNLEN + 1;
-
- // استدعاء دالة GetUserName للحصول على اسم المستخدم
- GetUserName(username, &username_len);
- 
- #elif __linux__
- // تعريف هيكل معلومات اسم نظام التشغيل
- struct utsname uname_data;
-
- // استدعاء دالة uname للحصول على معلومات اسم نظام التشغيل
- uname(&uname_data);
-
- // استخراج اسم نظام التشغيل من هيكل معلومات اسم نظام التشغيل
- strcpy(os_name, uname_data.sysname);
-
- // استخراج إصدار نظام التشغيل من هيكل معلومات اسم نظام التشغيل
- strcpy(os_version, uname_data.release);
-
- // تعريف متغير لحفظ طول اسم المستخدم
- const int UNLEN = 256;
-
- // استدعاء دالة getlogin_r للحصول على اسم المستخدم
- getlogin_r(username, UNLEN + 1);
- 
- #elif __APPLE__
- // تعريف متغيرات لحفظ معلومات النظام
- size_t size;
- char *buffer;
-
- // استخراج اسم نظام التشغيل
- size = sizeof(os_name);
- sysctlbyname("kern.ostype", os_name, &size, NULL, 0);
-
- // استخراج إصدار نظام التشغيل
- size = sizeof(os_version);
- sysctlbyname("kern.osrelease", os_version, &size, NULL, 0);
-
- // استخراج اسم المستخدم
- getlogin_r(username, UNLEN + 1);
- #endif
+  // استدعاء دالة GetUserName أو getlogin_r للحصول على اسم المستخدم
+  #ifdef _WIN32
+  GetUserName(username, &username_len);
+  #elif __linux__
+  getlogin_r(username, UNLEN + 1);
+  #elif __APPLE__
+  getlogin_r(username, UNLEN + 1);
+  #endif
 }
 
 
@@ -239,28 +357,28 @@ void get_memory_info(int *total_ram) {
 
 
 int main() {
-    char os_name[256], os_version[256], username[256];
-    char cpu_name[256];
-    int num_cores, total_ram;
+  // تعريف متغيرات لحفظ معلومات النظام
+  char os_name[UNLEN], os_version[UNLEN], username[UNLEN], device_type[UNLEN], device_name[UNLEN];
+  uint64_t total_space, used_space, free_space;
 
-    // استخراج معلومات النظام
-    get_system_info(os_name, os_version, username);
+  // استخراج معلومات النظام
+  get_system_info(os_name, os_version, username);
+  get_device_type(device_type);
+  get_device_name(device_name);
+  get_disk_info(&total_space, &used_space, &free_space);
 
-    // استخراج معلومات المعالج
-    get_cpu_info(cpu_name, &num_cores);
+  // طباعة معلومات النظام
+  printf("**معلومات النظام**\n");
+  printf("اسم نظام التشغيل: %s\n", os_name);
+  printf("إصدار نظام التشغيل: %s\n", os_version);
+  printf("اسم المستخدم: %s\n", username);
+  printf("نوع الجهاز: %s\n", device_type);
+  printf("اسم الجهاز: %s\n", device_name);
+  printf("**معلومات القرص الصلب**\n");
+  printf("المساحة الكلية: %llu جيجابايت\n", total_space);
+  printf("المساحة المستخدمة: %llu جيجابايت\n", used_space);
+  printf("المساحة الفارغة: %llu جيجابايت\n", free_space);
 
-    // استخراج معلومات الذاكرة
-    get_memory_info(&total_ram);
-    
-    
-	printf("Welcome With S.M.A Coding Channel...\n");
-    // طباعة تقرير عن النظام
-    printf("===== تقرير عن النظام =====\n");
-    printf("اسم المستخدم: %s\n", username);
-    printf("نظام التشغيل: %s %s\n", os_name, os_version);
-    printf("المعالج: %s\n", cpu_name);
-    printf("عدد النوى: %d\n", num_cores);
-    printf("الذاكرة العشوائية: %d جيجابايت\n", total_ram);
-
-    return 0;
+  return 0;
 }
+
